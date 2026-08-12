@@ -18,6 +18,12 @@ self-hosted labs. Zero dependencies.
 - YAML front matter (title, platform, difficulty, target, date, status)
 - Files organized as `writeups/<box-name>/writeup.md`
 
+## Example writeup
+
+See a complete, real writeup in [`examples/hh-beachbar.md`](examples/hh-beachbar.md) —
+a TryHackMe room exploited via unsafe YAML deserialization. Run the tool
+yourself to reproduce that structure.
+
 ## Usage
 
 ```sh
