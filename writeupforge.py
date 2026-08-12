@@ -199,8 +199,8 @@ def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("command", nargs="?", default="new",
-                        choices=["new", "init", "list"],
-                        help="new = interactive build, init = blank skeleton, list = saved writeups")
+                        choices=["new", "init", "list", "append"],
+                        help="new = interactive build, init = blank skeleton, list = saved writeups, append = add findings to existing")
     parser.add_argument("name", nargs="?", help="room/box name")
     parser.add_argument("--platform", default="thm", choices=list(PLATFORMS.keys()),
                         help="platform for front matter")
@@ -220,6 +220,50 @@ def main():
         with open(out, "w") as f:
             f.write(body)
         print(f"[+] Skeleton written to {out}")
+        return 0
+
+    if args.command == "append":
+        name = args.name or sys.exit("[-] append needs a name: writeupforge append hh-beachbar")
+        # find the writeup file
+        slug = _slug(name)
+        candidate = os.path.join(args.dir, slug, "writeup.md")
+        if not os.path.isfile(candidate):
+            candidate = os.path.join(args.dir, name, "writeup.md")
+        if not os.path.isfile(candidate):
+            sys.exit(f"[-] No writeup found for '{name}'. Run 'list' to see available writeups.")
+        with open(candidate) as f:
+            content = f.read()
+        sections = ["recon", "exploitation", "privesc", "lessons", "enumeration"]
+        print(f"  Appending to: {candidate}")
+        print(f"  Available sections: {', '.join(sections)}")
+        target_section = _ask("Section to append to", "exploitation").lower()
+        if target_section not in sections:
+            sections.append(target_section)
+        notes = _ask_multi("New findings (one per line, blank to finish)")
+        if not notes:
+            print("[-] Nothing to append.")
+            return 0
+        # find the target section header and insert after it
+        marker = f"## {target_section.capitalize()}"
+        lines = content.split("\n")
+        insert_idx = None
+        for i, line in enumerate(lines):
+            if line.strip().lower().startswith(marker.lower()):
+                # find the end of the section (next ## or end of file)
+                for j in range(i + 1, len(lines)):
+                    if lines[j].strip().startswith("## ") or j == len(lines) - 1:
+                        insert_idx = j
+                        break
+                break
+        if insert_idx is None:
+            print(f"[-] Section '{target_section}' not found in writeup.")
+            return 0
+        for note in notes:
+            lines.insert(insert_idx, f"- {note}")
+            insert_idx += 1
+        with open(candidate, "w") as f:
+            f.write("\n".join(lines))
+        print(f"[+] Appended {len(notes)} line(s) to {target_section} section")
         return 0
 
     # interactive build
